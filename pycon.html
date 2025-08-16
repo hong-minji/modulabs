@@ -525,6 +525,22 @@
     drawWheel();
     renderControls();
     document.getElementById('spin').addEventListener('click', spin);
+    // ====== KEYBOARD EVENTS ======
+    document.addEventListener('keydown', function(e) {
+      // Spacebar triggers spin
+      if (e.code === 'Space' || e.key === ' ') {
+        // Only spin if modal is not open
+        if (!modal.classList.contains('show')) {
+          spin();
+        }
+      }
+      // Enter closes modal
+      if (e.code === 'Enter' || e.key === 'Enter') {
+        if (modal.classList.contains('show')) {
+          modal.classList.remove('show');
+        }
+      }
+    });
 
   </script>
 </body>
