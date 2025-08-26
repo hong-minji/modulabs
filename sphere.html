@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모두의연구소 진행중인 랩 - 3D 구형 인터랙션</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000000;
+            color: #FFFFFF;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        
+        #container:active {
+            cursor: grabbing;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #FFFFFF;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+        
+        
+        .lab-text {
+            position: absolute;
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .lab-text:hover {
+            transform: scale(1.2);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+            background: rgba(0, 0, 0, 0.6);
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .modal.show {
+            opacity: 1;
+        }
+        
+        .modal-content {
+            background: #000000;
+            border: 1px solid #ffffff;
+            border-radius: 0;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+        }
+        
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            font-size: 1.2rem;
+            color: #ffffff;
+            margin-bottom: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #ffffff;
+            padding-bottom: 0.5rem;
+        }
+        
+        .modal-section {
+            margin-bottom: 1rem;
+        }
+        
+        .modal-label {
+            font-size: 0.8rem;
+            color: #ffffff;
+            margin-bottom: 0.3rem;
+        }
+        
+        .modal-value {
+            font-size: 0.9rem;
+            color: #ffffff;
+            line-height: 1.4;
+            word-break: keep-all;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 24px;
+            height: 24px;
+            border: 1px solid #ffffff;
+            background: #000000;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .close-btn:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                width: calc(100% - 2rem);
+            }
+        }
+        
+        .zoom-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+        }
+        
+        .main-title {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            letter-spacing: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: row;
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                justify-content: center;
+            }
+            
+            .control-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+                flex: 1;
+                text-align: center;
+            }
+            
+            .info-panel {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 10px;
+            }
+            
+            .zoom-indicator {
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                right: auto;
+            }
+            
+            .main-title {
+                font-size: 1.5rem;
+                top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div class="main-title">LAB ON-AIR</div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="zoomIn()">확대 (+)</button>
+        <button class="control-btn" onclick="zoomOut()">축소 (-)</button>
+        <button class="control-btn" onclick="resetZoom()">초기화</button>
+        <button class="control-btn" onclick="toggleAnimation()">자동회전</button>
+    </div>
+    
+    <div class="zoom-indicator" id="zoomIndicator">
+        줌: 100%
+    </div>
+    
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <div class="modal-header" id="modal-title">랩명</div>
+            
+            <div class="modal-section">
+                <div class="modal-label">랩장</div>
+                <div class="modal-value" id="modal-leader">랩장 정보</div>
+            </div>
+            
+            <div class="modal-section">
+                <div class="modal-label">한줄소개</div>
+                <div class="modal-value" id="modal-description">한줄소개 정보</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const labData = [
+            {
+                "랩명": "Deep Gen. Prob. Models 2 LAB",
+                "랩장": "조해창",
+                "한줄소개": "수학 및 확률론적 시각으로 딥러닝 생성 모델을 연구하고자 합니다."
+            },
+            {
+                "랩명": "GiTi LAB",
+                "랩장": "신유진",
+                "한줄소개": "COLM 2024 논문을 제출"
+            },
+            {
+                "랩명": "Humanoid Robot 2기 LAB",
+                "랩장": "정환석",
+                "한줄소개": "Humanoid Robot의 SW부터 HW까지 개발하기"
+            },
+            {
+                "랩명": "BioSolution LAB",
+                "랩장": "이진권",
+                "한줄소개": "생체데이터를 활용한 정신건강 AI 솔루션 탐구하는 모임입니다."
+            },
+            {
+                "랩명": "RSC LAB",
+                "랩장": "김준우",
+                "한줄소개": "Respiratory Sound Classification을 다양한 환경, 또는 Practical하게 연구"
+            },
+            {
+                "랩명": "HAE-RAE LAB",
+                "랩장": "손규진",
+                "한줄소개": "한국어 자연어 처리를 연구합니다."
+            },
+            {
+                "랩명": "RAG LAB",
+                "랩장": "이태경",
+                "한줄소개": "Controllable한 RAG 방법을 제안합니다."
+            },
+            {
+                "랩명": "RAG LAB",
+                "랩장": "이태경",
+                "한줄소개": "Controllable한 RAG 방법을 제안합니다."
+            },
+            {
+                "랩명": "HAERAE LAB",
+                "랩장": "손규진",
+                "한줄소개": "한국어 언어 인공지능을 연구하는 모임"
+            },
+            {
+                "랩명": "쩝쩝 LAB 시즌2",
+                "랩장": "김성록",
+                "한줄소개": "사용자의 선호와 상황에 맞춘 맞춤형 맛집 추천 시스템을 연구하고 구현하는 연구실"
+            },
+            {
+                "랩명": "All Sense LAB",
+                "랩장": "김재욱",
+                "한줄소개": "인공지능 탑티어를 목표로 논문 작성 및 아이디어를 공유하는 랩입니다."
+            },
+            {
+                "랩명": "Medical AI LAB",
+                "랩장": "이수정",
+                "한줄소개": "Study Medical Data with Artificial Intelligence\n\n(병원에서 발생하는 여러 의료 정보를 사용하여 (이미지, 실시간 데이터, 건강정보데이터 등) 실제 의료 현장에서 사용할 수 있는 의료 AI 를 개발하고 학술 활동하는 것을 목적으로 하는 랩)"
+            },
+            {
+                "랩명": "Vocie Conversational Agent LAB",
+                "랩장": "김영인",
+                "한줄소개": "음성 대화형 챗봇을 연구하며 구어체 답변 생성과 실시간 통신 기술을 연구 개발"
+            },
+            {
+                "랩명": "CVE LAB",
+                "랩장": "이승현",
+                "한줄소개": "Improving TTI Alignment Using Image captioning"
+            },
+            {
+                "랩명": "AI 에이전트 LAB",
+                "랩장": "최규남",
+                "한줄소개": "AI 에이전트를 스터디하고, 실생활에 적용하고, 내용을 공유하는 모임"
+            },
+            {
+                "랩명": "Game AI LAB",
+                "랩장": "서동해",
+                "한줄소개": "우리 연구소는 게임 속에서 유저와 함께 멋진 스토리를 만들어가는 인공지능을 연구합니다."
+            },
+            {
+                "랩명": "AI퀀트투자 LAB",
+                "랩장": "김예진",
+                "한줄소개": "AI를 활용해서 주식시장에 도전하는 모두의 AI 퀀트 투자 랩"
+            },
+            {
+                "랩명": "NVIDIA - Data Engineering with RAPIDS LAB",
+                "랩장": "이제영",
+                "한줄소개": "엔비디아 PARIDS 응용 방안에 대한 탐구 및 경험 연구"
+            },
+            {
+                "랩명": "NVIDIA - Foundation Models LAB",
+                "랩장": "김준수",
+                "한줄소개": "엔비디아 NGC CATALOG에서 제공하는 서비스 활용 연구"
+            },
+            {
+                "랩명": "Open Neural Network Research LAB",
+                "랩장": "윤주영",
+                "한줄소개": "차세대 뉴럴네트워크를 연구하는 오픈 연구실입니다."
+            },
+            {
+                "랩명": "MAAP LAB",
+                "랩장": "고준영",
+                "한줄소개": "Music AI Assemble People"
+            },
+            {
+                "랩명": "RAISE LAB",
+                "랩장": "장유철",
+                "한줄소개": "미래차 전자부품과 소재를 연구하고 실험하는 연구실"
+            },
+            {
+                "랩명": "Web3 AI 2기 LAB",
+                "랩장": "김민현",
+                "한줄소개": "탈중앙화 네트워크에서 상호작용하며 스스로 학습하는 AI 에이전트를 개발하고 연구합니다."
+            },
+            {
+                "랩명": "만년설 LAB",
+                "랩장": "조인서",
+                "한줄소개": "키르기스스탄의 만년설 해빙을 예측하는데 도움을 주는 데이터과학 웹도구를 만들려고 합니다."
+            },
+            {
+                "랩명": "AI-driven Aerospace LAB",
+                "랩장": "이동우",
+                "한줄소개": "AI를 이용하여 항공우주 문제를 혁신적으로 해결하고자 합니다!"
+            },
+            {
+                "랩명": "DELab",
+                "랩장": "전민규",
+                "한줄소개": "저번에 했던 DELab 2기 입니다."
+            },
+            {
+                "랩명": "Wiki_RAI LAB",
+                "랩장": "이예은",
+                "한줄소개": "초등학생을 위한 윤리 AI 교육을 위해 교육자, IT 전문가가 함께하는 커뮤니티"
+            },
+            {
+                "랩명": "Vibe Makers LAB",
+                "랩장": "홍민지",
+                "한줄소개": "AI를 기반으로 아이디어를 현실로 구현하는 메이커 랩"
+            },
+            {
+                "랩명": "[테크포임팩트] B-Peach LAB",
+                "랩장": "황윤경",
+                "한줄소개": "느린 학습자를 위한 쉬운 우리말 번안기 제작"
+            },
+            {
+                "랩명": "[테크포임팩트] 온소리 LAB",
+                "랩장": "정효정, 이호준",
+                "한줄소개": "AI 음성 합성 기술을 활용하여 일상 단어와 환경음 인식 훈련이 가능한 웹 기반 도구를 개발"
+            },
+            {
+                "랩명": "Intelligent Agent LAB",
+                "랩장": "이정우",
+                "한줄소개": "'Intelligent Agent Lab'은 최신의 강화학습 알고리즘 기법들의 이론을 스터디하고 해당 기법을 기반으로 연구를 진행합니다. 또한 최신 알고리즘에 대한 리뷰 및 프로젝트 중에 도출된 아이디어를 기반으로 논문을 작성하는 것을 목표로 합니다. "
+            },
+            {
+                "랩명": "무인이동체 LAB",
+                "랩장": "박광수",
+                "한줄소개": "Develop autonomous driverless vehicles"
+            },
+            {
+                "랩명": "KoAlpaca LAB",
+                "랩장": "이준범",
+                "한줄소개": "Research to better write Korean language models"
+            },
+            {
+                "랩명": "ISE LAB",
+                "랩장": "남승호",
+                "한줄소개": "Intelligent Software Engineering"
+            },
+            {
+                "랩명": "Spiritus LAB",
+                "랩장": "황윤경",
+                "한줄소개": "문학과 현실의 경계 지우기: 인문학, 기술 그리고 사람"
+            },
+            {
+                "랩명": "Bio X Learning LAB",
+                "랩장": "양우정",
+                "한줄소개": "Nature Communications 논문을 제출"
+            },
+            {
+                "랩명": "PrompTart LAB",
+                "랩장": "명지윤",
+                "한줄소개": "맛있는 프롬프트 레시피 찾아보기 : GPT, 라마, 미드저니, Stable Diffusion"
+            },
+            {
+                "랩명": "Advanced Computer vision LAB 시즌2",
+                "랩장": "홍성만",
+                "한줄소개": "Computer vision 최신 모델 및 논문에 대해 연구하고 구현하기"
+            },
+            {
+                "랩명": "PatentAI LAB",
+                "랩장": "김수형",
+                "한줄소개": "AI를 활용한 특허 연구를 통해 실무적 경영 환경에 유의미한 인사이트를 도출하는 연구 모임"
+            },
+            {
+                "랩명": "반려로봇 LAB 시즌4",
+                "랩장": "현청천",
+                "한줄소개": "한 가정이 한 개 이상의 로봇을 소유하게 되는 퍼스널 로봇 시대를 준비하는 랩입니다."
+            },
+            {
+                "랩명": "MathML LAB",
+                "랩장": "조해창",
+                "한줄소개": "인공지능에 인사이트를 넓혀주는 수학적 기초를 탄탄히 다지면서, 실제 코드와 함께 연구해요."
+            },
+            {
+                "랩명": "PERSONA LAB",
+                "랩장": "최영",
+                "한줄소개": "LLM의 특정 캐릭터로의 효과적인 fine-tuning 기법에 대한 연구"
+            },
+            {
+                "랩명": "4mula LAB",
+                "랩장": "지은현",
+                "한줄소개": "We have the 4mula to detect fraud!"
+            },
+            {
+                "랩명": "AI 에이전트 LAB",
+                "랩장": "최규남",
+                "한줄소개": "AI 에이전트를 스터디하고, 실생활에 적용하고, 내용을 공유하는 모임"
+            },
+            {
+                "랩명": "DR4R LAB Season 7 LAB",
+                "랩장": "박철",
+                "한줄소개": "Imitation learning for real world(ft.LeRobot)"
+            },
+            {
+                "랩명": "logp(x) LAB",
+                "랩장": "박수철",
+                "한줄소개": "생성모델의 알고리즘을 분석하고 연구합니다."
+            },
+            {
+                "랩명": "OpenRLFT LAB",
+                "랩장": "김보섭",
+                "한줄소개": "Open Reinforcement Learning Fine-Tuning"
+            },
+            {
+                "랩명": "PISTAR LAB 3기",
+                "랩장": "이용환",
+                "한줄소개": "강화학습 기반 금융 투자 알고리즘을 개발하는 연구 모임"
+            },
+            {
+                "랩명": "VLMAI LAB",
+                "랩장": "김준호",
+                "한줄소개": "멀티모달 연구 및 논문 게재"
+            },
+            {
+                "랩명": "Quantum Computing LAB Season 4 LAB",
+                "랩장": "이진호",
+                "한줄소개": "Quantum Computing과 관련된 주제에 대해 연구하는 랩입니다"
+            },
+            {
+                "랩명": "MirrorMind Lab",
+                "랩장": "오승환",
+                "한줄소개": "AI인격, 협업, 조직 진화를 위한 실험적 아키텍처 MirrorMind 구현 및 실험"
+            },
+            {
+                "랩명": "[테크포임팩트] 다정 LAB",
+                "랩장": "김승희",
+                "한줄소개": "자립 준비 청년들의 실제 니즈를 파악하고, 브라더스키퍼와 함께 현장에서 바로 사용 가능한 MVP를 개발"
+            },
+            {
+                "랩명": "[테크포임팩트] 가방싸 LAB",
+                "랩장": "최미연",
+                "한줄소개": "테크포임팩트 캠퍼스에서 개발된 \"가방으로 살아남기\" 게임을 완성도 높은 교육 도구로 고도화"
+            },
+            {
+                "랩명": "[테크포임팩트] 동접 LAB",
+                "랩장": "조현욱",
+                "한줄소개": "AI 기반 이미지 분석을 통해 매장 내부의 접근성 요소를 자동으로 추출하고 평가하는 시스템을 개발"
+            },
+            {
+                "랩명": "[테크포임팩트] 이을 LAB",
+                "랩장": "최재훈",
+                "한줄소개": " AR과 GPS를 활용한 게임화된 지역 참여 시스템을 통해 관계인구의 활동을 질적으로 데이터화"
+            },
+            {
+                "랩명": "[테크포임팩트] 유어덴티티 LAB",
+                "랩장": "김성준",
+                "한줄소개": "학교 밖 청소년들의 다양한 매력과 개성을 표현할 수 있는 PWA 기반 커뮤니티 플랫폼을 개발"
+            },
+            {
+                "랩명": "DataWarriors LAB",
+                "랩장": "최정민",
+                "한줄소개": "경진대회 수상을 목적으로 하는 Lab"
+            },
+            {
+                "랩명": "DE LAB",
+                "랩장": "전민규",
+                "한줄소개": "NLP, 이미지 AI, 그리고 LLM 에이전트 등 AI관련 다양한 분야의 연구를 진행합니다"
+            },
+            {
+                "랩명": "다오랩 바이브코딩길드 LAB",
+                "랩장": "임성중",
+                "한줄소개": "자율과 몰입이 자연스럽게 연결되는 협업 문화를 만들어본다면?"
+            },
+            {
+                "랩명": "Urban LAB",
+                "랩장": "장기문",
+                "한줄소개": "도시 문제 해결을 위해 데이터 및 AI 기반 방법론을 활용한 연구"
+            },
+            {
+                "랩명": "FairSharky LAB",
+                "랩장": "강동헌",
+                "한줄소개": "이용약관과 개인처리정보방침 분석 플랫폼"
+            },
+            {
+                "랩명": "AI Inference LAB",
+                "랩장": "강건",
+                "한줄소개": "고성능·저지연·확장 가능한 AI 추론 운영 플랫폼"
+            },
+            {
+                "랩명": "CURG LAB",
+                "랩장": "진수하",
+                "한줄소개": "블록체인 리서치와 PoC(Proof of Concept) 프로젝트를 수행합니다."
+            },
+            {
+                "랩명": "다오랩 6기 LAB",
+                "랩장": "한재선",
+                "한줄소개": "미래 조직을 연구하고 설계하고 세상에 적용하는 실험실"
+            },
+            {
+                "랩명": "Say Better LAB",
+                "랩장": "지영인",
+                "한줄소개": "모두가 의사소통 제약 없이 살아가는 세상을 만들어갑니다."
+            },
+            {
+                "랩명": "GenAI in Finance LAB",
+                "랩장": "이태경",
+                "한줄소개": "GenAI in Finance"
+            },
+            {
+                "랩명": "Hell Maker LAB",
+                "랩장": "김도혁",
+                "한줄소개": "길거리 간접 흡연 문제를 해결하기 위한 AIOT 장치 개발과 확장"
+            },
+            {
+                "랩명": "쉬운말 번역기 LAB",
+                "랩장": "옥수빈",
+                "한줄소개": "발달장애인들의 일상생활 지원을 위한 서비스 개발"
+            },
+            {
+                "랩명": "AI 생기부 분석 서비스 개발 LAB",
+                "랩장": "오정민",
+                "한줄소개": "AI를 활용한 생기부 분석 및 맞춤형 입시 정보 제공 서비스"
+            },
+            {
+                "랩명": "솔로프리너 업무자동화 에이전트 LAB",
+                "랩장": "김진이",
+                "한줄소개": "솔로프리너의 업무/창작/커뮤니티 자동화를 돕는 다양한 AI 에이전트 서비스를 개발합니다."
+            },
+            {
+                "랩명": "aim LAB",
+                "랩장": "김유진",
+                "한줄소개": "대학생을 위한 채용 솔루션을 개발하고 있는 Lab 입니다"
+            },
+            {
+                "랩명": "automall LAB",
+                "랩장": "김류원",
+                "한줄소개": "반복적인 쇼핑몰 운영 업무(상품 등록·CS·마케팅)를 자동화함"
+            },
+            {
+                "랩명": "n8n을 활용한 논문 필터링 자동화 LAB",
+                "랩장": "박철",
+                "한줄소개": "n8n을 활용한 논문 필터링 자동화"
+            }
+        ];
+        
+        let scene, camera, renderer, sphere;
+        let currentScale = 1;
+        let targetScale = 1;
+        let isAutoRotating = false;
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let rotationX = 0, rotationY = 0;
+        let labElements = [];
+        
+        // 터치 관련 변수
+        let touches = [];
+        let lastTouchDistance = 0;
+        
+        // 모달 자동 닫기 타이머
+        let modalTimer = null;
+        
+        // 자동 초기화 타이머
+        let autoResetTimer = null;
+
+        function init() {
+            const container = document.getElementById('container');
+            
+            // Scene 생성
+            scene = new THREE.Scene();
+            
+            // Camera 생성
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Renderer 생성
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 1);
+            container.appendChild(renderer.domElement);
+            
+            // 구 생성
+            createSphere();
+            
+            // 랩 텍스트 생성
+            createLabTexts();
+            
+            // 조명 추가
+            addLights();
+            
+            // 이벤트 리스너 추가
+            addEventListeners();
+            
+            // 자동 초기화 타이머 시작
+            startAutoResetTimer();
+            
+            // 애니메이션 시작
+            animate();
+        }
+
+        function createSphere() {
+            const geometry = new THREE.SphereGeometry(2, 32, 32);
+            
+            // 머티리얼에 와이어프레임과 색상 그라디언트 효과
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x2244aa,
+                wireframe: false,
+                transparent: true,
+                opacity: 0.1,
+                shininess: 100
+            });
+            
+            sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+            
+            // 와이어프레임 추가
+            const wireframeGeometry = new THREE.SphereGeometry(2.02, 16, 16);
+            const wireframeMaterial = new THREE.MeshBasicMaterial({
+                color: 0x666666,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.2
+            });
+            
+            const wireframeSphere = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+            sphere.add(wireframeSphere);
+        }
+        
+        function createLabTexts() {
+            const container = document.getElementById('container');
+            
+            labData.forEach((lab, index) => {
+                const element = document.createElement('div');
+                element.className = 'lab-text';
+                element.textContent = lab.랩명;
+                element.addEventListener('click', () => showLabInfo(lab));
+                
+                container.appendChild(element);
+                
+                // 구면 좌표계로 위치 계산
+                const phi = Math.acos(-1 + (2 * index) / labData.length);
+                const theta = Math.sqrt(labData.length * Math.PI) * phi;
+                
+                labElements.push({
+                    element: element,
+                    data: lab,
+                    phi: phi,
+                    theta: theta + (Math.random() - 0.5) * 0.5,
+                    originalPhi: phi,
+                    originalTheta: theta
+                });
+            });
+        }
+
+        function addLights() {
+            // 주변광
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            // 방향광
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+            
+            // 포인트 라이트 추가
+            const pointLight = new THREE.PointLight(0x88ccff, 0.6);
+            pointLight.position.set(-5, -5, 5);
+            scene.add(pointLight);
+        }
+
+        function addEventListeners() {
+            // 마우스 이벤트
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+            
+            // 터치 이벤트
+            renderer.domElement.addEventListener('touchstart', onTouchStart);
+            renderer.domElement.addEventListener('touchmove', onTouchMove);
+            renderer.domElement.addEventListener('touchend', onTouchEnd);
+            
+            // 윈도우 리사이즈
+            window.addEventListener('resize', onWindowResize);
+            
+            // 키보드 이벤트
+            window.addEventListener('keydown', onKeyDown);
+        }
+
+        function onMouseDown(event) {
+            mouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            resetAutoResetTimer();
+        }
+
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            rotationY += deltaX * 0.01;
+            rotationX += deltaY * 0.01;
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            mouseDown = false;
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            const delta = event.deltaY > 0 ? 0.9 : 1.1;
+            targetScale = Math.max(0.1, Math.min(5, targetScale * delta));
+            updateZoomIndicator();
+            resetAutoResetTimer();
+        }
+
+        function onTouchStart(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 2) {
+                lastTouchDistance = getTouchDistance(touches[0], touches[1]);
+            }
+            resetAutoResetTimer();
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            const currentTouches = Array.from(event.touches);
+            
+            if (currentTouches.length === 1 && touches.length === 1) {
+                // 단일 터치 - 회전
+                const deltaX = currentTouches[0].clientX - touches[0].clientX;
+                const deltaY = currentTouches[0].clientY - touches[0].clientY;
+                
+                rotationY += deltaX * 0.01;
+                rotationX += deltaY * 0.01;
+            } else if (currentTouches.length === 2 && touches.length === 2) {
+                // 두 손가락 터치 - 줌
+                const currentDistance = getTouchDistance(currentTouches[0], currentTouches[1]);
+                const delta = currentDistance / lastTouchDistance;
+                targetScale = Math.max(0.1, Math.min(5, targetScale * delta));
+                lastTouchDistance = currentDistance;
+                updateZoomIndicator();
+            }
+            
+            touches = currentTouches;
+        }
+
+        function onTouchEnd(event) {
+            touches = Array.from(event.touches);
+        }
+
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(event) {
+            resetAutoResetTimer();
+            switch(event.key) {
+                case '+':
+                case '=':
+                    zoomIn();
+                    break;
+                case '-':
+                    zoomOut();
+                    break;
+                case '0':
+                    resetZoom();
+                    break;
+                case ' ':
+                    event.preventDefault();
+                    toggleAnimation();
+                    break;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 스케일 애니메이션
+            currentScale += (targetScale - currentScale) * 0.1;
+            sphere.scale.setScalar(currentScale);
+            
+            // 자동 회전
+            if (isAutoRotating) {
+                rotationY += 0.0025;
+            }
+            
+            // 회전 적용
+            sphere.rotation.x = rotationX;
+            sphere.rotation.y = rotationY;
+            
+            // 랩 텍스트 위치 업데이트
+            updateLabPositions();
+            
+            renderer.render(scene, camera);
+        }
+        
+        function updateLabPositions() {
+            const radius = 2.5 * currentScale;
+            
+            labElements.forEach((labElement, index) => {
+                // 시간에 따른 미세한 움직임
+                const time = Date.now() * 0.0005;
+                const phi = labElement.phi + Math.sin(time + index) * 0.1;
+                const theta = labElement.theta + rotationY;
+                
+                // 구면 좌표를 3D 좌표로 변환
+                const x = radius * Math.sin(phi) * Math.cos(theta);
+                const y = radius * Math.cos(phi) + Math.sin(time + index * 0.5) * 0.1;
+                const z = radius * Math.sin(phi) * Math.sin(theta);
+                
+                // 회전 적용
+                const rotatedX = x;
+                const rotatedY = y * Math.cos(rotationX) - z * Math.sin(rotationX);
+                const rotatedZ = y * Math.sin(rotationX) + z * Math.cos(rotationX);
+                
+                // 3D 좌표를 화면 좌표로 변환
+                const vector = new THREE.Vector3(rotatedX, rotatedY, rotatedZ);
+                vector.project(camera);
+                
+                const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // 화면에 표시
+                labElement.element.style.left = screenX + 'px';
+                labElement.element.style.top = screenY + 'px';
+                
+                // 뒤쪽에 있는 텍스트는 투명하게
+                const opacity = vector.z > 0 ? 0.3 : Math.max(0.6, 1 + vector.z * 0.5);
+                labElement.element.style.opacity = opacity;
+                
+                // 크기 조절
+                const scale = Math.max(0.7, 0.8 + vector.z * 0.3) * Math.min(currentScale, 2);
+                labElement.element.style.transform = `scale(${scale})`;
+            });
+        }
+
+        function zoomIn() {
+            targetScale = Math.min(5, targetScale * 1.2);
+            updateZoomIndicator();
+            resetAutoResetTimer();
+        }
+
+        function zoomOut() {
+            targetScale = Math.max(0.1, targetScale * 0.8);
+            updateZoomIndicator();
+            resetAutoResetTimer();
+        }
+
+        function resetZoom() {
+            targetScale = 1;
+            rotationX = 0;
+            rotationY = 0;
+            updateZoomIndicator();
+            resetAutoResetTimer();
+        }
+
+        function toggleAnimation() {
+            isAutoRotating = !isAutoRotating;
+            const btn = event.target;
+            btn.textContent = isAutoRotating ? '정지' : '자동회전';
+            resetAutoResetTimer();
+        }
+
+        function updateZoomIndicator() {
+            const percentage = Math.round(targetScale * 100);
+            document.getElementById('zoomIndicator').textContent = `줌: ${percentage}%`;
+        }
+        
+        function showLabInfo(lab) {
+            // 기존 타이머가 있다면 취소
+            if (modalTimer) {
+                clearTimeout(modalTimer);
+            }
+            
+            document.getElementById('modal-title').textContent = lab.랩명;
+            document.getElementById('modal-leader').textContent = lab.랩장;
+            document.getElementById('modal-description').textContent = lab.한줄소개;
+            
+            const modal = document.getElementById('modal');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+            
+            // 5초 후 자동으로 닫기
+            modalTimer = setTimeout(() => {
+                closeModal();
+            }, 5000);
+            
+            resetAutoResetTimer();
+        }
+        
+        function closeModal() {
+            // 타이머 취소
+            if (modalTimer) {
+                clearTimeout(modalTimer);
+                modalTimer = null;
+            }
+            
+            const modal = document.getElementById('modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        document.addEventListener('click', (event) => {
+            const modal = document.getElementById('modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // 자동 초기화 타이머 함수들
+        function startAutoResetTimer() {
+            autoResetTimer = setTimeout(() => {
+                resetZoom();
+            }, 10000); // 10초
+        }
+        
+        function resetAutoResetTimer() {
+            if (autoResetTimer) {
+                clearTimeout(autoResetTimer);
+            }
+            startAutoResetTimer();
+        }
+
+        // 초기화
+        init();
+    </script>
+</body>
+</html>
