@@ -198,6 +198,25 @@
             letter-spacing: 2px;
         }
         
+        .bottom-instruction {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 300;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+            z-index: 1000;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        
         @media (max-width: 768px) {
             .controls {
                 flex-direction: row;
@@ -232,6 +251,12 @@
                 font-size: 1.5rem;
                 top: 20px;
             }
+            
+            .bottom-instruction {
+                bottom: 10px;
+                font-size: 14px;
+                padding: 8px 16px;
+            }
         }
     </style>
 </head>
@@ -251,6 +276,9 @@
         줌: 100%
     </div>
     
+    <div class="bottom-instruction">
+        손으로 움직이고 확대해 보세요
+    </div>
     
     <div class="modal" id="modal">
         <div class="modal-content">
