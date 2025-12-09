@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COMMUNITY EVENT</title>
+  <style>
+    :root{
+      --bg:#F6706E;
+      --wheel-shadow: rgba(0,0,0,0.15);
+      --panel-bg: #fff6f6;
+      --text:#222;
+      --muted:#777;
+      --soldout:#C5C5C5;
+      --red:#FF4D4F;
+      --yellow:#FFC53D;
+      --blue:#40A9FF;
+      --green:#73D13D;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; padding:0; overflow:hidden;}
+    body{
+      background:var(--bg); color:#fff; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;
+      width:1080px; height:1920px;
+      display:flex; align-items:center; justify-content:center; padding:40px;
+    }
+    .page{
+      width:100%; height:100%;
+      display:flex; flex-direction:column; gap:20px;
+    }
+    .header{
+      text-align:center;
+    }
+    .title{
+      font-size: clamp(28px, 5vw, 44px); font-weight:800; letter-spacing:-0.02em; margin:0 0 8px;
+    }
+    .subtitle{
+      font-size: clamp(14px, 2.5vw, 18px); opacity:.9; margin:0;
+    }
+
+    .content{
+      display:flex; flex-direction:column; gap:20px;
+      align-items:center;
+      flex:1;
+      justify-content:center;
+    }
+
+    .card{
+      background:var(--panel-bg);
+      color:var(--text);
+      border-radius:20px;
+      padding:18px;
+      box-shadow: 0 10px 30px var(--wheel-shadow);
+    }
+
+    .wheel-wrap{
+      display:flex; flex-direction:column; align-items:center; gap:20px;
+      padding:24px;
+    }
+    .wheel-slot{
+      position:relative; width:680px; height:680px;
+      display:grid; place-items:center;
+    }
+    canvas#wheel{
+      width:100%; height:100%;
+      filter: drop-shadow(0 12px 22px var(--wheel-shadow));
+      border-radius:50%;
+      background:#fff;
+    }
+    .pointer{
+  position:absolute; top:-48px; left:50%; transform:translateX(-50%) rotate(180deg);
+  width:0; height:0;
+  z-index: 10;
+  border-left:48px solid transparent;
+  border-right:48px solid transparent;
+  border-bottom:78px solid #FF4D4F;
+  filter: drop-shadow(0 8px 16px rgba(255,77,79,0.25));
+    }
+    .spin-btn{
+      border:0; border-radius:999px; padding:20px 40px; font-size:24px; font-weight:800; letter-spacing:.02em;
+      background:#111; color:#fff; cursor:pointer;
+      transition: transform .05s ease, opacity .2s ease, box-shadow .2s ease;
+      box-shadow: 0 8px 20px rgba(0,0,0,.25);
+    }
+    .spin-btn:disabled{
+      opacity:.5; cursor:not-allowed; box-shadow:none;
+    }
+    .spin-btn:active{ transform: translateY(1px) scale(.995); }
+
+    .legend{
+      display:flex; gap:10px; flex-wrap:wrap; justify-content:center; font-size:12px; color:var(--muted);
+    }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:-1px; }
+
+    .prize-card{
+      display:flex; flex-direction:column; gap:12px;
+      width:100%; max-width:1000px;
+      padding:20px 24px;
+    }
+    .prize-grid{
+      display:grid; grid-template-columns: 1fr 1fr; gap:12px;
+    }
+    .prize-row{
+      display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center;
+      background:#fff; border-radius:14px; padding:10px 12px; border:1px solid rgba(0,0,0,0.05);
+    }
+    .prize-meta{
+      display:flex; align-items:center; gap:12px;
+      min-width:0;
+    }
+    .badge{
+      font-size:12px; font-weight:800; padding:4px 8px; border-radius:999px; color:#111;
+      background:rgba(255,255,255,.6); border:1px solid rgba(0,0,0,.08);
+    }
+    .prize-name{
+      font-weight:800; font-size:18px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .desc{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .qty{
+      display:flex; align-items:center; gap:6px; font-size:13px; color:#333;
+      background:#f6f6f6; padding:6px 8px; border-radius:10px;
+    }
+    .qty input{
+      width:56px; border:1px solid #e5e5e5; border-radius:8px; padding:6px 8px; font-size:13px; text-align:center;
+      background:#fff;
+    }
+    .toggle{
+      --on:#111;
+      appearance:none; width:58px; height:34px; border-radius:999px;
+      background:#e7e7e7; position:relative; outline:none; cursor:pointer; transition:background .2s ease;
+    }
+    .toggle:checked{ background:var(--on); }
+    .toggle::after{
+      content:""; position:absolute; top:3px; left:3px; width:28px; height:28px; border-radius:50%; background:#fff;
+      transition:left .2s ease;
+    }
+    .toggle:checked::after{ left:27px; }
+
+    .sold{
+      opacity:.5; filter:grayscale(.3);
+    }
+
+    /* Result modal */
+    .modal{
+      position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); padding:20px;
+    }
+    .modal.show{ display:grid; }
+    .modal-card{
+      width:min(92vw,520px); background:#fff; color:#222; border-radius:22px; padding:22px; text-align:center;
+      box-shadow: 0 16px 36px rgba(0,0,0,.35);
+      position:relative; overflow:hidden;
+    }
+    .modal-title{ font-size:22px; font-weight:800; margin:4px 0 8px; }
+    .modal-prize{ font-size:28px; font-weight:900; margin:4px 0 14px; }
+    .modal-btn{ margin-top:8px; border:0; background:#111; color:#fff; padding:12px 18px; border-radius:12px; font-weight:800; cursor:pointer; }
+    .modal-note{ font-size:12px; color:#666; margin-top:8px; }
+
+    /* Confetti canvas */
+    #fx{
+      position:fixed; inset:0; pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="header" style="text-align:center; flex-shrink:0;">
+      <img src="moducon2025.svg" alt="MODUCON 2025 Logo" style="width:500px; background:transparent; margin-bottom:40px; display:block; margin-left:auto; margin-right:auto;" />
+      <h1 class="title" style="color:#fff; margin:0; font-size:48px; font-weight:800; letter-spacing:-0.02em;">COMMUNITY EVENT</h1>
+    </header>
+
+    <div class="content">
+      <!-- WHEEL -->
+      <section class="card wheel-wrap">
+        <div class="wheel-slot">
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel" width="900" height="900" aria-label="경품 룰렛"></canvas>
+        </div>
+        <button id="spin" class="spin-btn">🎡 추첨하기</button>
+        <div class="legend" id="legend">
+          <!-- 동적 생성 -->
+        </div>
+      </section>
+
+      <!-- PRIZE CONTROL -->
+      <section class="card prize-card" id="controls">
+        <h3 style="margin:0 0 6px; font-size:18px; font-weight:900;">경품</h3>
+        <div class="prize-grid" id="prizeGrid">
+          <!-- Rows injected by JS -->
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- CONFETTI FX -->
+  <canvas id="fx"></canvas>
+
+  <!-- RESULT MODAL -->
+  <div class="modal" id="resultModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div id="sparkle"></div>
+      <div style="font-size:40px; margin-bottom:8px;">🎉</div>
+      <div class="modal-title">축하합니다!</div>
+      <div id="resultText" class="modal-prize">—</div>
+      <button class="modal-btn" id="closeModal">확인</button>
+  <!-- 문구 삭제됨 -->
+    </div>
+  </div>
+
+  <script>
+    // ====== DATA ======
+    const prizes = [
+  { id: 0, rank: "1", name: "폴딩박스", color: "#FF4D4F", desc: "모두연 폴딩박스", icon: "📦", soldOut: false, baseWeight: 6 },
+  { id: 1, rank: "2", name: "머그컵", color: "#FF7A45", desc: "모두연 머그컵", icon: "☕", soldOut: false, baseWeight: 22 },
+  { id: 2, rank: "3", name: "미니 램프", color: "#FFC53D", desc: "모두연 미니 램프", icon: "💡", soldOut: false, baseWeight: 7 },
+  { id: 3, rank: "4", name: "폴딩체어", color: "#73D13D", desc: "모두연 폴딩체어", icon: "🪑", soldOut: false, baseWeight: 3 },
+  { id: 4, rank: "5", name: "대나무 칫솔", color: "#36CFC9", desc: "모두연 대나무 칫솔", icon: "🪥", soldOut: false, baseWeight: 20 },
+  { id: 5, rank: "6", name: "AI 도서", color: "#40A9FF", desc: "AI 도서", icon: "📚", soldOut: false, baseWeight: 5 },
+  { id: 6, rank: "7", name: "미니 노트", color: "#597EF7", desc: "모두연 리서치 미니 노트", icon: "📓", soldOut: false, baseWeight: 9 },
+  { id: 7, rank: "8", name: "수건", color: "#9254DE", desc: "모두연 수건", icon: "🧣", soldOut: false, baseWeight: 6 },
+  { id: 8, rank: "9", name: "포켓 장바구니", color: "#F759AB", desc: "모두연 포켓 장바구니", icon: "🛍️", soldOut: false, baseWeight: 15 },
+  { id: 9, rank: "10", name: "보조배터리", color: "#69C0FF", desc: "보조배터리", icon: "🔋", soldOut: false, baseWeight: 13 },
+  { id: 10, rank: "11", name: "우산", color: "#B37FEB", desc: "우산", icon: "☂️", soldOut: false, baseWeight: 5 },
+  { id: 11, rank: "12", name: "간식", color: "#FF7875", desc: "간식", icon: "🍬", soldOut: false, baseWeight: 600 },
+    ];
+    // 헬퍼: CSS var 읽기
+    function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+    // ====== CANVAS / WHEEL ======
+    const wheel = document.getElementById('wheel');
+    const ctx = wheel.getContext('2d');
+    const size = wheel.width; // square
+    const R = size/2;
+    let rotation = 0; // degrees
+    const sliceAngle = 360 / prizes.length;
+
+    function drawWheel(){
+      ctx.clearRect(0,0,size,size);
+      ctx.save();
+      ctx.translate(R, R);
+      ctx.rotate(deg2rad(rotation));
+
+      // segments
+      for(let i=0;i<prizes.length;i++){
+        const p = prizes[i];
+        const start = deg2rad(i*sliceAngle - 90); // -90: 12시 기준
+        const end   = deg2rad((i+1)*sliceAngle - 90);
+        ctx.beginPath();
+        ctx.moveTo(0,0);
+        ctx.arc(0,0,R-8,start,end,false);
+        ctx.closePath();
+
+        // 색상/품절 표현
+  ctx.fillStyle = p.soldOut ? shadeColor(p.color, 60) : p.color;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+        ctx.stroke();
+
+        // text & icon
+        const mid = (start+end)/2;
+        ctx.save();
+        ctx.rotate(mid);
+        ctx.translate((R-75), 0);
+        ctx.rotate(Math.PI/2);
+        ctx.textAlign = 'center';
+        // 아이콘
+        ctx.font = 'bold 38px system-ui';
+        ctx.fillStyle = '#111';
+        ctx.fillText(p.icon, 0, -10);
+        // 등수/이름
+        ctx.font = '900 20px system-ui';
+        ctx.fillText(`${p.rank}`, 0, 20);
+        ctx.font = '700 16px system-ui';
+        ctx.fillText(`${p.name}`, 0, 44);
+        // 없음 라벨
+        if(p.soldOut){
+          ctx.font = '800 14px system-ui';
+          ctx.fillStyle = '#333';
+          ctx.fillText(`없음`, 0, 64);
+        }
+        ctx.restore();
+      }
+
+      // center disk
+  ctx.beginPath();
+  ctx.arc(0,0,58,0,Math.PI*2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 28px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('MODULABS', 0, -6);
+  ctx.font = '700 18px system-ui';
+  ctx.fillText('', 0, 22);
+
+      ctx.restore();
+    }
+
+    function deg2rad(d){ return d*Math.PI/180; }
+    function mod(a,b){ return ((a%b)+b)%b; }
+    function shadeColor(hex, percent){
+      // lighten toward #C5C5C5 for sold-out
+      const t = {r:197,g:197,b:197};
+      const c = hexToRGB(hex);
+      const r = Math.round(c.r + (t.r-c.r)*(percent/100));
+      const g = Math.round(c.g + (t.g-c.g)*(percent/100));
+      const b = Math.round(c.b + (t.b-c.b)*(percent/100));
+      return `rgb(${r},${g},${b})`;
+    }
+    function hexToRGB(hex){
+      let h = hex.replace('#','');
+      if(h.length===3) h = h.split('').map(x=>x+x).join('');
+      const n = parseInt(h,16);
+      return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+    }
+
+    // ====== PROBABILITY / PICK ======
+    function currentWeights(){
+  return prizes.map(p=> p.soldOut ? 0 : p.baseWeight);
+    }
+    function weightedPick(){
+      const w = currentWeights();
+      const sum = w.reduce((a,b)=>a+b,0);
+      if(sum===0) return null;
+      let r = Math.random()*sum;
+      for(let i=0;i<w.length;i++){
+        if(r < w[i]) return i;
+        r -= w[i];
+      }
+      return w.length-1;
+    }
+
+    // ====== SPIN / EASING / SOUND ======
+    const spinBtn = document.getElementById('spin');
+    let spinning = false;
+
+    // simple tick sound via WebAudio
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function tick(){
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type='square';
+      o.frequency.value = 900 + Math.random()*100;
+      g.gain.value = 0.04;
+      o.connect(g).connect(audioCtx.destination);
+      o.start();
+      setTimeout(()=>{ o.stop(); }, 35);
+    }
+
+    function spin(){
+      if(spinning) return;
+      const targetIndex = weightedPick();
+      if(targetIndex===null){
+        alert('모든 경품이 품절입니다.');
+        return;
+      }
+      spinning = true;
+      spinBtn.disabled = true;
+
+      // 목표 각도 계산: 당첨 섹션의 "중심"이 12시(0°)에 오도록
+      // 현재 회전(rotation) 기준으로 섹션 i의 중심 각:
+      // center = rotation + i*slice + slice/2
+      // 이 값이 0°(또는 360°)이 되게 하려면 delta = 360 - (center % 360)
+      const centerNow = rotation + targetIndex*sliceAngle + sliceAngle * Math.random();
+      const alignDelta = mod(360 - mod(centerNow,360), 360);
+
+      // 여분 회전(자연스러운 스핀): 3.5 ~ 5.5바퀴
+      const extra = 360 * 5 ;
+
+      const start = rotation;
+      const end = rotation + extra + alignDelta; // 최종 각도
+
+      const dur = 3400 + Math.random()*900; // 3.4~4.3초
+      const t0 = performance.now();
+
+      // 가속-감속 이징
+      const easeOutCubic = x => 1 - Math.pow(1 - x, 3);
+
+      // tick 빈도 컨트롤
+      let lastTickAngle = rotation;
+
+      // 사운드(스핀 시작 효과)
+      tick();
+
+      function frame(t){
+        const p = Math.min(1, (t - t0) / dur);
+        const eased = easeOutCubic(p);
+        rotation = start + (end - start) * eased;
+        drawWheel();
+
+        // tick: 섹션 경계 통과 시 효과음
+        if(Math.abs(rotation - lastTickAngle) > sliceAngle/2){
+          tick();
+          lastTickAngle = rotation;
+        }
+
+        if(p < 1){
+          requestAnimationFrame(frame);
+        }else{
+          rotation = end % 360;
+          drawWheel();
+          setTimeout(()=> onFinish(targetIndex), 50);
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function onFinish(index){
+  // 당첨 결과 표시만
+  const p = prizes[index];
+  showResult(`${p.rank} — ${p.name} ${p.icon}`);
+
+      // 축하 이펙트
+      confetti(900);
+
+      spinning = false;
+      spinBtn.disabled = false;
+    }
+
+    // ====== CONTROLS UI ======
+    const prizeGrid = document.getElementById('prizeGrid');
+    function renderControls(){
+      prizeGrid.innerHTML = '';
+
+      prizes.forEach(p=>{
+        const row = document.createElement('div');
+        row.className = 'prize-row' + (p.soldOut ? ' sold' : '');
+        row.style.setProperty('--outline', p.color);
+
+        const meta = document.createElement('div');
+        meta.className = 'prize-meta';
+
+        const colorDot = document.createElement('span');
+        colorDot.className = 'dot';
+        colorDot.style.background = p.color;
+        colorDot.style.width = '14px';
+        colorDot.style.height = '14px';
+
+        const name = document.createElement('div');
+        name.innerHTML = `<div class="prize-name">${p.rank} · ${p.name}</div>`;
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = p.soldOut ? '없음' : '있음';
+
+        meta.append(colorDot, name, badge);
+
+        // 있음/없음 토글
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox';
+        toggle.checked = !p.soldOut;
+        toggle.addEventListener('change', ()=>{
+          p.soldOut = !toggle.checked;
+          drawWheel(); renderControls();
+        });
+        toggle.style.marginLeft = '8px';
+
+        row.append(meta, toggle);
+        prizeGrid.appendChild(row);
+      });
+    }
+
+    // ====== RESULT MODAL ======
+    const modal = document.getElementById('resultModal');
+    const resultText = document.getElementById('resultText');
+    const closeModal = document.getElementById('closeModal');
+    function showResult(text){
+      resultText.textContent = text;
+      modal.classList.add('show');
+    }
+    closeModal.addEventListener('click', ()=> modal.classList.remove('show'));
+    modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.classList.remove('show'); });
+
+    // ====== CONFETTI (simple) ======
+    const fx = document.getElementById('fx');
+    const fxc = fx.getContext('2d');
+    let particles = [];
+    function confetti(count=600){
+      resizeFx();
+      particles = [];
+      for(let i=0;i<count;i++){
+        particles.push({
+          x: Math.random()*fx.width,
+          y: -10 - Math.random()*fx.height*0.3,
+          r: 2 + Math.random()*3,
+          vy: 2 + Math.random()*4,
+          vx: (Math.random()-0.5)*2,
+          a: Math.random()*Math.PI*2,
+          va: (Math.random()-0.5)*0.2,
+        });
+      }
+      if(!confetti.anim){
+        confetti.anim = true;
+        requestAnimationFrame(confettiFrame);
+      }
+    }
+    function resizeFx(){
+      fx.width = window.innerWidth;
+      fx.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFx);
+    function confettiFrame(){
+      fxc.clearRect(0,0,fx.width,fx.height);
+      let alive = 0;
+      particles.forEach(p=>{
+        p.x += p.vx;
+        p.y += p.vy;
+        p.a += p.va;
+        if(p.y < fx.height+10){
+          alive++;
+          fxc.save();
+          fxc.translate(p.x,p.y);
+          fxc.rotate(p.a);
+          fxc.fillStyle = ['#fff','#ffd166','#06d6a0','#118ab2','#ff4d4f','#73d13d','#40a9ff'][ (alive+p.r|0) % 7 ];
+          fxc.fillRect(-p.r,-p.r,p.r*2,p.r*2);
+          fxc.restore();
+        }
+      });
+      particles = particles.filter(p=>p.y < fx.height+10);
+      if(particles.length>0){
+        requestAnimationFrame(confettiFrame);
+      }else{
+        confetti.anim = false;
+      }
+    }
+
+    // ====== LEGEND ======
+    function renderLegend(){
+      const legend = document.getElementById('legend');
+      legend.innerHTML = '';
+      prizes.forEach(p => {
+        const span = document.createElement('span');
+        span.innerHTML = `<span class="dot" style="background:${p.color}"></span>${p.rank} ${p.name}`;
+        legend.appendChild(span);
+      });
+    }
+
+    // ====== INIT ======
+    drawWheel();
+    renderControls();
+    renderLegend();
+    document.getElementById('spin').addEventListener('click', spin);
+    // ====== KEYBOARD EVENTS ======
+    document.addEventListener('keydown', function(e) {
+      // Spacebar triggers spin
+      if (e.code === 'Space' || e.key === ' ') {
+        // Only spin if modal is not open
+        if (!modal.classList.contains('show')) {
+          spin();
+        }
+      }
+      // Enter closes modal
+      if (e.code === 'Enter' || e.key === 'Enter') {
+        if (modal.classList.contains('show')) {
+          modal.classList.remove('show');
+        }
+      }
+    });
+
+  </script>
+</body>
+</html>
